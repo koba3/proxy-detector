@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'models/proxy_settings.dart';
 import 'repositories/platform_proxy_repository.dart';
 import 'services/proxy_service.dart';
+import 'pages/proxy_auth_settings_page.dart';
+import 'services/proxy_credentials_service.dart';
 
 void main() {
   runApp(const ProxyDetectorApp());
@@ -71,6 +73,22 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
     }
   }
 
+  void _navigateToAuthSettings() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ProxyAuthSettingsPage(
+          storage: _createSecureStorage(),
+        ),
+      ),
+    );
+  }
+
+  // セキュアストレージの簡易実装（デモ用）
+  // 実際にはflutter_secure_storageを使用してください
+  SecureStorage _createSecureStorage() {
+    return _DemoSecureStorage();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -78,6 +96,11 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('Windows プロキシ設定検出'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.vpn_key),
+            onPressed: _navigateToAuthSettings,
+            tooltip: 'プロキシ認証設定',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadProxySettings,
@@ -255,5 +278,31 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
         ],
       ),
     );
+  }
+}
+
+// デモ用のセキュアストレージ実装
+// 実際のアプリではflutter_secure_storageを使用してください
+class _DemoSecureStorage implements SecureStorage {
+  static final Map<String, String> _storage = {};
+
+  @override
+  Future<void> write({required String key, required String value}) async {
+    _storage[key] = value;
+  }
+
+  @override
+  Future<String?> read({required String key}) async {
+    return _storage[key];
+  }
+
+  @override
+  Future<void> delete({required String key}) async {
+    _storage.remove(key);
+  }
+
+  @override
+  Future<void> deleteAll() async {
+    _storage.clear();
   }
 }
