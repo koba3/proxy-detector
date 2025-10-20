@@ -1,22 +1,25 @@
-# Windows プロキシ設定検出アプリ
+# プロキシ設定検出アプリ (Windows, iOS & Android)
 
-このFlutterアプリは、Windowsシステムのプロキシ設定を検出して表示するテストアプリケーションです。
+このFlutterアプリは、Windows、iOS、Android のシステムプロキシ設定を検出して表示するマルチプラットフォームアプリケーションです。
 
 ## 機能
 
-- Windowsシステムのプロキシ設定を自動検出
+- **マルチプラットフォーム対応**: Windows、iOS、Android でプロキシ設定を自動検出
 - プロキシサーバー情報の表示
 - バイパスリストの表示
 - 自動設定URLの表示
 - プロキシ有効/無効状態の確認
+- プラットフォーム自動判定機能
+- Android 5.0 (API 21) 以降をサポート
 
 ## 使用方法
 
 ### 前提条件
 
 - Flutter SDK (3.0以上)
-- Windows 10/11
-- Visual Studio 2019以上（Windows開発用）
+- **Windows開発**: Windows 10/11、Visual Studio 2019以上
+- **iOS開発**: macOS、Xcode 13以上
+- **Android開発**: Android Studio、Android SDK (API 21以上)
 
 ### ビルドと実行
 
@@ -30,27 +33,77 @@ cd proxy_detector
 flutter pub get
 ```
 
-3. Windowsでアプリを実行
+3. アプリを実行
+
+Windowsで実行:
 ```bash
 flutter run -d windows
+```
+
+iOSシミュレータで実行:
+```bash
+flutter run -d ios
+```
+
+実機のiOSデバイスで実行:
+```bash
+flutter run -d <デバイスID>
+```
+
+Androidエミュレータで実行:
+```bash
+flutter run -d android
+```
+
+実機のAndroidデバイスで実行:
+```bash
+flutter run -d <デバイスID>
 ```
 
 ### テスト用プロキシ設定
 
 アプリをテストするために、以下のプロキシ設定を試すことができます：
 
-#### 1. 手動プロキシ設定
-- Windows設定 > ネットワークとインターネット > プロキシ
-- 「手動プロキシ設定をオンにする」を有効
-- プロキシサーバー: `127.0.0.1:8080`
-- バイパスリスト: `localhost;127.0.0.1`
+#### Windows
+1. **手動プロキシ設定**
+   - Windows設定 > ネットワークとインターネット > プロキシ
+   - 「手動プロキシ設定をオンにする」を有効
+   - プロキシサーバー: `127.0.0.1:8080`
+   - バイパスリスト: `localhost;127.0.0.1`
 
-#### 2. 自動設定
-- 「設定を自動的に検出する」を有効
-- または「セットアップスクリプトを使用する」を有効
+2. **自動設定**
+   - 「設定を自動的に検出する」を有効
+   - または「セットアップスクリプトを使用する」を有効
 
-#### 3. プロキシ無効
-- 「プロキシサーバーを使用しない」を選択
+3. **プロキシ無効**
+   - 「プロキシサーバーを使用しない」を選択
+
+#### iOS
+1. **手動プロキシ設定**
+   - 設定 > Wi-Fi > 接続中のネットワーク > プロキシを構成
+   - 「手動」を選択
+   - サーバー: `127.0.0.1`、ポート: `8080`
+
+2. **自動設定**
+   - 「自動」を選択
+   - URL: プロキシ自動設定ファイル（PAC）のURL
+
+3. **プロキシ無効**
+   - 「オフ」を選択
+
+#### Android
+1. **手動プロキシ設定**
+   - 設定 > Wi-Fi > 接続中のネットワークを長押し > ネットワークを変更
+   - 「詳細オプション」を表示
+   - プロキシ: 「手動」を選択
+   - プロキシホスト名: `127.0.0.1`、ポート: `8080`
+
+2. **自動設定（PAC）**
+   - プロキシ: 「プロキシ自動設定」を選択
+   - PAC URL: プロキシ自動設定ファイルのURL
+
+3. **プロキシ無効**
+   - プロキシ: 「なし」を選択
 
 ## アーキテクチャ
 
@@ -100,6 +153,14 @@ flutter run -d windows
 - **`windows_proxy_repository.dart`**: Windows実装
   - WinHTTP APIを使用
   - MethodChannelでネイティブコードと通信
+- **`ios_proxy_repository.dart`**: iOS実装
+  - System Configuration frameworkを使用
+  - CFNetworkでプロキシ設定を取得
+- **`android_proxy_repository.dart`**: Android実装
+  - ConnectivityManagerを使用
+  - LinkPropertiesからプロキシ設定を取得
+- **`platform_proxy_repository.dart`**: プラットフォーム自動判定
+  - 現在のプラットフォームに応じて適切なリポジトリを自動選択
 
 #### 3. Services (`lib/services/`)
 - **`proxy_service.dart`**: ビジネスロジック層
@@ -107,10 +168,21 @@ flutter run -d windows
   - 依存性注入によりテスト可能
   - 追加のビジネスロジックを提供
 
-#### 4. Native Code (`windows/runner/`)
+#### 4. Native Code
+**Windows** (`windows/runner/`):
 - **`proxy_detector.h/cpp`**: Windows APIを使用してプロキシ設定を取得
 - **`flutter_window.cpp`**: MethodChannelハンドラー
 - WinHTTP APIを使用してIEプロキシ設定を読み取り
+
+**iOS** (`ios/Runner/`):
+- **`ProxyDetector.swift`**: System Configuration frameworkを使用
+- **`AppDelegate.swift`**: MethodChannelハンドラー
+- CFNetworkでプロキシ設定を取得（HTTP、HTTPS、SOCKS、FTP対応）
+
+**Android** (`android/app/src/main/kotlin/`):
+- **`ProxyDetector.kt`**: ConnectivityManagerとLinkPropertiesを使用
+- **`MainActivity.kt`**: MethodChannelハンドラー
+- Android 5.0 (API 21) 以降をサポート
 
 ### 他のプロジェクトでの使用方法
 
@@ -121,13 +193,16 @@ flutter run -d windows
 ```dart
 import 'package:proxy_detector/proxy_detector.dart';
 
-// 1. リポジトリを選択（Windows、モック、カスタム等）
-final repository = WindowsProxyRepository();
-
-// 2. サービスを初期化（依存性注入）
+// 方法1: プラットフォーム自動判定（推奨）
+final repository = PlatformProxyRepository.create(); // Windows, iOS, Android を自動選択
 final proxyService = ProxyService(repository);
 
-// 3. プロキシ設定を取得
+// 方法2: 特定のプラットフォームを指定
+// final repository = WindowsProxyRepository();  // Windows専用
+// final repository = IOSProxyRepository();      // iOS専用
+// final repository = AndroidProxyRepository();  // Android専用
+
+// プロキシ設定を取得
 final settings = await proxyService.getProxySettings();
 print('プロキシ有効: ${settings.isEnabled}');
 print('サーバー: ${settings.proxyServer}');
@@ -179,9 +254,18 @@ final mockService = ProxyService(MockProxyRepository());
 詳細な使用例は `example/proxy_detector_example.dart` を参照してください。
 
 ### メソッドチャンネル
+
+**共通メソッド** (Windows, iOS & Android):
 - `getProxySettings`: 全プロキシ設定を取得
 - `isProxyEnabled`: プロキシ有効状態を確認
 - `getProxyServer`: プロキシサーバー情報を取得
+
+**iOS専用メソッド**:
+- `getDetailedProxySettings`: HTTP、HTTPS、SOCKS、FTPの詳細情報を取得
+- `getProxyForURL`: 特定のURLに対するプロキシ設定を取得
+
+**Android専用メソッド**:
+- `getDetailedProxySettings`: プロキシとネットワーク接続の詳細情報を取得
 
 ## トラブルシューティング
 
@@ -206,21 +290,35 @@ final mockService = ProxyService(MockProxyRepository());
 ```
 lib/
 ├── models/
-│   └── proxy_settings.dart        # データモデル
+│   └── proxy_settings.dart                 # データモデル
 ├── repositories/
-│   ├── proxy_repository.dart      # リポジトリインターフェース
-│   └── windows_proxy_repository.dart  # Windows実装
+│   ├── proxy_repository.dart               # リポジトリインターフェース
+│   ├── windows_proxy_repository.dart       # Windows実装
+│   ├── ios_proxy_repository.dart           # iOS実装
+│   ├── android_proxy_repository.dart       # Android実装
+│   └── platform_proxy_repository.dart      # プラットフォーム自動判定
 ├── services/
-│   └── proxy_service.dart         # ビジネスロジック
-├── proxy_detector.dart            # ライブラリエクスポート
-└── main.dart                      # UIアプリケーション
+│   └── proxy_service.dart                  # ビジネスロジック
+├── proxy_detector.dart                     # ライブラリエクスポート
+└── main.dart                               # UIアプリケーション
 
 example/
-└── proxy_detector_example.dart    # 使用例
+└── proxy_detector_example.dart             # 使用例
 
 windows/runner/
-├── proxy_detector.h/cpp           # ネイティブ実装
-└── flutter_window.cpp             # メソッドチャンネル
+├── proxy_detector.h/cpp                    # ネイティブ実装
+└── flutter_window.cpp                      # メソッドチャンネル
+
+ios/Runner/
+├── ProxyDetector.swift                     # ネイティブ実装
+└── AppDelegate.swift                       # メソッドチャンネル
+
+android/app/src/main/kotlin/
+├── ProxyDetector.kt                        # ネイティブ実装
+└── MainActivity.kt                         # メソッドチャンネル
+
+ANDROID_SETUP.md                            # Androidセットアップガイド
+IOS_SETUP.md                                # iOSセットアップガイド
 ```
 
 ### デバッグ

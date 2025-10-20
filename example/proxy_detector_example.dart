@@ -18,14 +18,17 @@ void main() async {
 
   // 例4: カスタムリポジトリの使用
   await example4CustomRepository();
+
+  // 例5: プラットフォーム自動判定
+  await example5PlatformAutoDetection();
 }
 
 /// 例1: 基本的な使用方法
 Future<void> example1BasicUsage() async {
   print('=== 例1: 基本的な使用方法 ===');
 
-  // WindowsProxyRepositoryを使用してProxyServiceを初期化
-  final proxyService = ProxyService(WindowsProxyRepository());
+  // プラットフォームに応じて自動的にリポジトリを選択
+  final proxyService = ProxyService(PlatformProxyRepository.create());
 
   try {
     // プロキシ設定を取得
@@ -47,7 +50,7 @@ Future<void> example1BasicUsage() async {
 Future<void> example2IndividualMethods() async {
   print('=== 例2: 個別のメソッドを使用 ===');
 
-  final proxyService = ProxyService(WindowsProxyRepository());
+  final proxyService = ProxyService(PlatformProxyRepository.create());
 
   try {
     // プロキシが有効かどうかを確認
@@ -78,7 +81,7 @@ Future<void> example2IndividualMethods() async {
 Future<void> example3ErrorHandling() async {
   print('=== 例3: エラーハンドリング ===');
 
-  final proxyService = ProxyService(WindowsProxyRepository());
+  final proxyService = ProxyService(PlatformProxyRepository.create());
 
   try {
     final settings = await proxyService.getProxySettings();
@@ -110,6 +113,39 @@ Future<void> example4CustomRepository() async {
     print('モックプロキシサーバー: ${settings.proxyServer}');
   } catch (e) {
     print('エラー: $e');
+  }
+
+  print('');
+}
+
+/// 例5: プラットフォーム自動判定
+Future<void> example5PlatformAutoDetection() async {
+  print('=== 例5: プラットフォーム自動判定 ===');
+
+  // 現在のプラットフォームを確認
+  print('現在のプラットフォーム: ${PlatformProxyRepository.getPlatformName()}');
+  print('サポート状況: ${PlatformProxyRepository.isSupported()}');
+
+  if (PlatformProxyRepository.isSupported()) {
+    try {
+      // プラットフォームに応じて自動的にリポジトリを作成
+      final repository = PlatformProxyRepository.create();
+      final service = ProxyService(repository);
+      
+      final settings = await service.getProxySettings();
+      print('プロキシ設定取得成功: ${settings.isEnabled}');
+      
+      // Windows または iOS 固有の処理
+      if (PlatformProxyRepository.getPlatformName() == 'Windows') {
+        print('Windows環境で実行中');
+      } else if (PlatformProxyRepository.getPlatformName() == 'iOS') {
+        print('iOS環境で実行中');
+      }
+    } catch (e) {
+      print('エラー: $e');
+    }
+  } else {
+    print('このプラットフォームはサポートされていません');
   }
 
   print('');

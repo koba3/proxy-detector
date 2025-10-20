@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models/proxy_settings.dart';
-import 'repositories/windows_proxy_repository.dart';
+import 'repositories/platform_proxy_repository.dart';
 import 'services/proxy_service.dart';
 
 void main() {
@@ -39,9 +39,16 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
   @override
   void initState() {
     super.initState();
-    // 依存性注入: WindowsProxyRepositoryを使用してProxyServiceを初期化
-    _proxyService = ProxyService(WindowsProxyRepository());
-    _loadProxySettings();
+    // 依存性注入: プラットフォームに応じたリポジトリを自動選択
+    try {
+      _proxyService = ProxyService(PlatformProxyRepository.create());
+      _loadProxySettings();
+    } catch (e) {
+      setState(() {
+        _error = 'このプラットフォームはサポートされていません: $e';
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadProxySettings() async {

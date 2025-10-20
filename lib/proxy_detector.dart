@@ -74,6 +74,9 @@ export 'models/proxy_settings.dart';
 // Repositories
 export 'repositories/proxy_repository.dart';
 export 'repositories/windows_proxy_repository.dart';
+export 'repositories/ios_proxy_repository.dart';
+export 'repositories/android_proxy_repository.dart';
+export 'repositories/platform_proxy_repository.dart';
 
 // Services
 export 'services/proxy_service.dart';
