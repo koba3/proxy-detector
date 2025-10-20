@@ -54,13 +54,129 @@ flutter run -d windows
 
 ## アーキテクチャ
 
-### ネイティブコード (C++)
-- `proxy_detector.h/cpp`: Windows APIを使用してプロキシ設定を取得
+このプロジェクトは、**疎結合で再利用可能な設計**を採用しています。プロキシ検出ロジックは他のプロジェクトでも簡単に再利用できます。
+
+### レイヤー構造
+
+```
+┌─────────────────────────────────────┐
+│  UI Layer (main.dart)               │
+│  - プロキシ設定の表示               │
+│  - ユーザーインタラクション         │
+└─────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────┐
+│  Service Layer (proxy_service.dart) │
+│  - ビジネスロジック                 │
+│  - データ変換・検証                 │
+└─────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────┐
+│  Repository Layer                   │
+│  - プラットフォーム抽象化           │
+│  - ProxyRepository (インターフェース)│
+│  - WindowsProxyRepository (実装)    │
+└─────────────────────────────────────┘
+              ↓
+┌─────────────────────────────────────┐
+│  Model Layer (proxy_settings.dart)  │
+│  - データモデル                     │
+│  - プラットフォーム非依存           │
+└─────────────────────────────────────┘
+```
+
+### コンポーネント
+
+#### 1. Models (`lib/models/`)
+- **`proxy_settings.dart`**: プロキシ設定のデータモデル
+  - プラットフォーム非依存
+  - イミュータブル（不変）
+  - シリアライズ/デシリアライズ対応
+
+#### 2. Repositories (`lib/repositories/`)
+- **`proxy_repository.dart`**: プロキシリポジトリのインターフェース
+  - 抽象化層として機能
+  - 異なる実装を切り替え可能
+- **`windows_proxy_repository.dart`**: Windows実装
+  - WinHTTP APIを使用
+  - MethodChannelでネイティブコードと通信
+
+#### 3. Services (`lib/services/`)
+- **`proxy_service.dart`**: ビジネスロジック層
+  - リポジトリを通じてデータを取得
+  - 依存性注入によりテスト可能
+  - 追加のビジネスロジックを提供
+
+#### 4. Native Code (`windows/runner/`)
+- **`proxy_detector.h/cpp`**: Windows APIを使用してプロキシ設定を取得
+- **`flutter_window.cpp`**: MethodChannelハンドラー
 - WinHTTP APIを使用してIEプロキシ設定を読み取り
 
-### Flutter側
-- `proxy_service.dart`: ネイティブコードとの通信を管理
-- `main.dart`: UIとプロキシ設定の表示
+### 他のプロジェクトでの使用方法
+
+このライブラリは疎結合に設計されているため、簡単に他のプロジェクトで再利用できます。
+
+#### 基本的な使用例
+
+```dart
+import 'package:proxy_detector/proxy_detector.dart';
+
+// 1. リポジトリを選択（Windows、モック、カスタム等）
+final repository = WindowsProxyRepository();
+
+// 2. サービスを初期化（依存性注入）
+final proxyService = ProxyService(repository);
+
+// 3. プロキシ設定を取得
+final settings = await proxyService.getProxySettings();
+print('プロキシ有効: ${settings.isEnabled}');
+print('サーバー: ${settings.proxyServer}');
+```
+
+#### カスタムリポジトリの実装
+
+```dart
+// 独自のプロキシ検出ロジックを実装
+class CustomProxyRepository implements ProxyRepository {
+  @override
+  Future<ProxySettings> getProxySettings() async {
+    // カスタムロジックを実装
+    return ProxySettings(...);
+  }
+  
+  @override
+  Future<bool> isProxyEnabled() async { ... }
+  
+  @override
+  Future<String> getProxyServer() async { ... }
+}
+
+// カスタムリポジトリを使用
+final service = ProxyService(CustomProxyRepository());
+```
+
+#### テスト用モックの使用
+
+```dart
+class MockProxyRepository implements ProxyRepository {
+  @override
+  Future<ProxySettings> getProxySettings() async {
+    return ProxySettings(
+      isEnabled: true,
+      proxyServer: 'test-proxy:8080',
+      bypassList: 'localhost',
+      autoDetect: false,
+      autoConfigUrl: '',
+    );
+  }
+  // ... 他のメソッド
+}
+
+// テストで使用
+final mockService = ProxyService(MockProxyRepository());
+```
+
+詳細な使用例は `example/proxy_detector_example.dart` を参照してください。
 
 ### メソッドチャンネル
 - `getProxySettings`: 全プロキシ設定を取得
@@ -80,10 +196,32 @@ flutter run -d windows
 ## 開発者向け情報
 
 ### 新しい機能の追加
-1. `proxy_detector.cpp`でネイティブ機能を実装
-2. `flutter_window.cpp`でメソッドチャンネルにハンドラーを追加
-3. `proxy_service.dart`でDart側のインターフェースを追加
-4. `main.dart`でUIを更新
+1. **ネイティブ機能**: `proxy_detector.cpp`でWindows API機能を実装
+2. **メソッドチャンネル**: `flutter_window.cpp`でハンドラーを追加
+3. **リポジトリ**: `windows_proxy_repository.dart`でメソッドを追加
+4. **サービス**: `proxy_service.dart`でビジネスロジックを追加
+5. **UI**: `main.dart`で表示を更新
+
+### プロジェクト構造
+```
+lib/
+├── models/
+│   └── proxy_settings.dart        # データモデル
+├── repositories/
+│   ├── proxy_repository.dart      # リポジトリインターフェース
+│   └── windows_proxy_repository.dart  # Windows実装
+├── services/
+│   └── proxy_service.dart         # ビジネスロジック
+├── proxy_detector.dart            # ライブラリエクスポート
+└── main.dart                      # UIアプリケーション
+
+example/
+└── proxy_detector_example.dart    # 使用例
+
+windows/runner/
+├── proxy_detector.h/cpp           # ネイティブ実装
+└── flutter_window.cpp             # メソッドチャンネル
+```
 
 ### デバッグ
 - Visual Studioでネイティブコードをデバッグ可能

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'proxy_service.dart';
+import 'models/proxy_settings.dart';
+import 'repositories/windows_proxy_repository.dart';
+import 'services/proxy_service.dart';
 
 void main() {
   runApp(const ProxyDetectorApp());
@@ -30,13 +31,16 @@ class ProxyDetectorPage extends StatefulWidget {
 }
 
 class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
-  Map<String, dynamic>? _proxySettings;
+  late final ProxyService _proxyService;
+  ProxySettings? _proxySettings;
   bool _isLoading = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    // 依存性注入: WindowsProxyRepositoryを使用してProxyServiceを初期化
+    _proxyService = ProxyService(WindowsProxyRepository());
     _loadProxySettings();
   }
 
@@ -47,7 +51,7 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
     });
 
     try {
-      final settings = await ProxyService.getProxySettings();
+      final settings = await _proxyService.getProxySettings();
       setState(() {
         _proxySettings = settings;
         _isLoading = false;
@@ -141,8 +145,8 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
   }
 
   Widget _buildStatusCard() {
-    final isEnabled = _proxySettings!['isEnabled'] as bool? ?? false;
-    final autoDetect = _proxySettings!['autoDetect'] as bool? ?? false;
+    final isEnabled = _proxySettings!.isEnabled;
+    final autoDetect = _proxySettings!.autoDetect;
 
     return Card(
       child: Padding(
@@ -174,8 +178,8 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
   }
 
   Widget _buildProxyDetailsCard() {
-    final proxyServer = _proxySettings!['proxyServer'] as String? ?? '';
-    final bypassList = _proxySettings!['bypassList'] as String? ?? '';
+    final proxyServer = _proxySettings!.proxyServer;
+    final bypassList = _proxySettings!.bypassList;
 
     return Card(
       child: Padding(
@@ -200,7 +204,7 @@ class _ProxyDetectorPageState extends State<ProxyDetectorPage> {
   }
 
   Widget _buildAutoConfigCard() {
-    final autoConfigUrl = _proxySettings!['autoConfigUrl'] as String? ?? '';
+    final autoConfigUrl = _proxySettings!.autoConfigUrl;
 
     return Card(
       child: Padding(
